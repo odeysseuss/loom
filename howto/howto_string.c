@@ -3,5 +3,7 @@
 #include <stdio.h>
 
 int main(void) {
-    printf("1 + 1 = %d\n", add(1, 1));
+    String s = strNew("Gandalf the grey");
+    printf("%s\n", s);
+    strFree(s);
 }
