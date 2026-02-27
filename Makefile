@@ -1,45 +1,34 @@
 cc := clang
-cflags := -std=c11 -Wall -Wextra -pedantic -MMD -MP
-debflags := -g3 -fsanitize=address,undefined,leak
-relflags := -O2 -ffast-math -march=native
-testflags := -lcriterion
-incdir := -Istructs
-exdir := build/examples
-testdir := build/tests
+cflags := -std=c11 -Wall -Wextra -pedantic -MMD -MP -D_GNU_SOURCE
+incdir := -Inet -Istructs
+objdir := build/obj
+bindir := build/target
 
 MODE ?= debug
 ifeq ($(MODE), release)
-	cflags += $(relflags)
+	cflags += -O2 -ffast-math -march=native
 else
-	cflags += $(debflags)
+	cflags += -g3 -fsanitize=address,undefined,leak
 endif
 
-examplefiles := $(wildcard howto/*.c)
-examples := $(examplefiles:howto/%.c=$(exdir)/%)
-testfiles := $(wildcard tests/*.c)
-tests := $(testfiles:tests/%.c=$(testdir)/%)
+srcs := $(wildcard howto/*.c)
+objs := $(srcs:howto/%.c=$(objdir)/%.o)
+deps := $(srcs:howto/%.c=$(objdir)/%.d)
+exec := $(srcs:howto/%.c=$(bindir)/%)
+-include $(deps)
 
-.PHONY: all examples tests run clean
+.PHONY: all test run clean
 
-all: examples tests
-examples: $(examples)
-tests: $(tests)
+all: $(exec)
 
-$(exdir)/%: howto/%.c | $(exdir)
-	$(cc) $(cflags) $(incdir) $^ -o $@
+$(bindir)/%: $(objdir)/%.o | $(bindir)
+	$(cc) $(cflags) $< -o $@
 
-$(testdir)/%: tests/%.c | $(testdir)
-	$(cc) $(cflags) $(incdir) $^ -o $@ $(testflags)
+$(objdir)/%.o: howto/%.c | $(objdir)
+	$(cc) $(cflags) $(incdir) -c $< -o $@
 
-$(exdir) $(testdir):
+$(objdir) $(bindir):
 	mkdir -p $@
 
-run: $(tests)
-	@for t in $(tests); do \
-		echo "[TEST]: $$t"; \
-		./$$t; \
-		echo ""; \
-	done
-
 clean:
-	rm -rf build
+	rm -rf $(bindir) $(objdir)
