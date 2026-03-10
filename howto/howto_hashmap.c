@@ -9,7 +9,7 @@ int compare(const void *str1, const void *str2) {
 
 int main(void) {
     HashMapArgs args = {
-        .capacity = 3,
+        .capacity = 4,
         .nodeCmp = compare,
     };
 
@@ -21,11 +21,15 @@ int main(void) {
 
     printf("robb: %s\n", (char *)hashmapGet(map, "robb"));
     hashmapDel(map, "robb");
+    hashmapSet(map, "frodo", "shire");
+    hashmapSet(map, "sam", "shire");
 
     printf("king: %s\n", (char *)hashmapGet(map, "king"));
     printf("gandalf: %s\n", (char *)hashmapGet(map, "gandalf"));
     printf("robb: %s\n", (char *)hashmapGet(map, "robb"));
     printf("jaime: %s\n", (char *)hashmapGet(map, "jaime"));
+    printf("frodo: %s\n", (char *)hashmapGet(map, "frodo"));
+    printf("sam: %s\n", (char *)hashmapGet(map, "sam"));
 
     hashmapFree(map);
 

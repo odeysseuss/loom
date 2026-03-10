@@ -15,8 +15,6 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
-#include <netdb.h>
-#include <stdio.h>
 #define XXHASH_IMPLEMENTATION
 #include "xxhash.h"
 #include <stdint.h>
@@ -43,6 +41,7 @@ typedef struct {
     float load_factor;
     size_t threshold;
     Node **items;
+    Node tombstone;
 } HashMap;
 
 typedef struct {
@@ -66,9 +65,7 @@ void hashmapFree(HashMap *map);
 #define realloc_ realloc
 #define free_ free
 
-// #ifdef HASHMAP_IMPLEMENTATION
-
-static Node deleted_item_ = {NULL, NULL};
+#ifdef HASHMAP_IMPLEMENTATION
 
 static inline uint64_t getHash_(const void *s,
                                 const size_t size,
@@ -106,12 +103,12 @@ static void hashmapResize_(HashMap *map) {
 
     for (size_t i = 0; i < old_cap; i++) {
         Node *node = old_items[i];
-        if (node && node != &deleted_item_) {
+        if (node && node != &map->tombstone) {
             uint64_t index =
                 getHash_(node->key, map->key_size, map->capacity, 0);
 
             for (size_t j = 1;
-                 map->items[index] && map->items[index] != &deleted_item_;
+                 map->items[index] && map->items[index] != &map->tombstone;
                  j++) {
                 index = getHash_(node->key, map->key_size, map->capacity, j);
             }
@@ -139,6 +136,8 @@ HashMap *hashmapNew(HashMapArgs *args) {
     map->nodeAlloc = args->nodeAlloc;
     map->nodeFree = args->nodeFree;
     map->nodeCmp = args->nodeCmp;
+    map->tombstone.key = NULL;
+    map->tombstone.val = NULL;
 
     return map;
 }
@@ -149,16 +148,25 @@ void hashmapSet(HashMap *map, const void *key, const void *val) {
     }
 
     uint64_t index = getHash_(key, map->key_size, map->capacity, 0);
-    Node *curr_node = map->items[index];
+    uint64_t first_deleted = map->capacity;
 
-    for (size_t i = 1; curr_node && curr_node != &deleted_item_; i++) {
-        if (map->nodeCmp(curr_node->key, key) == 0) {
-            curr_node->val = (void *)val;
+    for (size_t i = 1; map->items[index]; i++) {
+        if (map->items[index] == &map->tombstone &&
+            first_deleted == map->capacity) {
+            first_deleted = index;
+        }
+
+        if (map->items[index] != &map->tombstone &&
+            map->nodeCmp(map->items[index]->key, key) == 0) {
+            map->items[index]->val = (void *)val;
             return;
         }
 
         index = getHash_(key, map->key_size, map->capacity, i);
-        curr_node = map->items[index];
+    }
+
+    if (first_deleted != map->capacity) {
+        index = first_deleted;
     }
 
     Node *node = nodeNew_(key, val);
@@ -175,11 +183,11 @@ void *hashmapGet(const HashMap *map, const void *key) {
             return NULL;
         }
 
-        if (node != &deleted_item_ && map->nodeCmp(node->key, key) == 0) {
+        if (node != &map->tombstone && map->nodeCmp(node->key, key) == 0) {
             return node->val;
         }
 
-        index = getHash_(key, map->key_size, map->capacity, i);
+        index = getHash_(key, map->key_size, map->capacity, i + 1);
     }
 
     return NULL;
@@ -188,27 +196,27 @@ void *hashmapGet(const HashMap *map, const void *key) {
 void hashmapDel(HashMap *map, const void *key) {
     uint64_t index = getHash_(key, map->key_size, map->capacity, 0);
 
-    for (size_t i = 0; i <= map->capacity; i++) {
+    for (size_t i = 0; i < map->capacity; i++) {
         Node *node = map->items[index];
         if (!node) {
             return;
         }
 
-        if (node != &deleted_item_ && map->nodeCmp(node->key, key) == 0) {
+        if (node != &map->tombstone && map->nodeCmp(node->key, key) == 0) {
             nodeFree_(node);
-            map->items[index] = &deleted_item_;
+            map->items[index] = &map->tombstone;
             map->size--;
             return;
         }
 
-        index = getHash_(key, map->key_size, map->capacity, i);
+        index = getHash_(key, map->key_size, map->capacity, i + 1);
     }
 }
 
 void hashmapFree(HashMap *map) {
     for (size_t i = 0; i < map->capacity; i++) {
         Node *node = map->items[i];
-        if (node != NULL && node != &deleted_item_) {
+        if (node && node != &map->tombstone) {
             nodeFree_(node);
         }
     }
@@ -217,7 +225,7 @@ void hashmapFree(HashMap *map) {
     free_(map);
 }
 
-// #endif // HASHMAP_IMPLEMENTATION
+#endif // HASHMAP_IMPLEMENTATION
 
 #ifdef __cplusplus
 }
