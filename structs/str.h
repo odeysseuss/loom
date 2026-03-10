@@ -5,6 +5,9 @@
 * before inlcuding str.h:
 *   #define STRING_IMPLEMENTATION
 *   #include "str.h"
+* TODO:
+*   - Methods: strCat, strCatFmt, strSlice, strCpy, strLastIndexOf, strFirstIndexOf,
+*   strSplit, strJoin, strReplace
 */
 
 #ifndef STR_H

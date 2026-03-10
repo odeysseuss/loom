@@ -9,6 +9,8 @@
 *
 * DEPENDENCIES: mem/pool.h
 * WARNING: Only accessible in Linux
+* TODO:
+*   - Windows and BSD support
 */
 #ifndef TCP_H
 #define TCP_H
