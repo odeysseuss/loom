@@ -8,7 +8,7 @@
 *
 * DEPENDENCIES: structs/xxhash.h
 * TODO:
-*   - Add node{Alloc, Free, Cmp}
+*   - Allow dynamic alloc and free
 *   - Resizable hashmap
 *   - Benchmark
 */
@@ -27,7 +27,7 @@ extern "C" {
 
 typedef struct {
     void *key;
-    void *value;
+    void *val;
 } Node;
 
 typedef struct {
@@ -37,6 +37,7 @@ typedef struct {
     size_t size;
     size_t capacity;
     size_t key_size;
+    size_t val_size;
     Node **items;
 } HashMap;
 
@@ -46,10 +47,11 @@ typedef struct {
     int (*nodeCmp)(const void *a, const void *b);
     size_t capacity;
     size_t key_size;
+    size_t val_size;
 } HashMapArgs;
 
 HashMap *hashmapNew(HashMapArgs *args);
-void hashmapSet(HashMap *map, const void *key, const void *value);
+void hashmapSet(HashMap *map, const void *key, const void *val);
 void *hashmapGet(const HashMap *map, const void *key);
 void hashmapDel(HashMap *map, const void *key);
 void hashmapFree(HashMap *map);
@@ -73,10 +75,10 @@ static uint64_t getHash_(const void *s,
     return (hash_a + (attempt * (hash_b + 1))) % capacity;
 }
 
-static Node *nodeNew_(const void *key, const void *value) {
+static Node *nodeNew_(const void *key, const void *val) {
     Node *node = malloc_(sizeof(Node));
-    node->key = key;
-    node->value = value;
+    node->key = (void *)key;
+    node->val = (void *)val;
 
     return node;
 }
@@ -98,39 +100,39 @@ HashMap *hashmapNew(HashMapArgs *args) {
     return map;
 }
 
-void hashmapSet(HashMap *map, const void *key, const void *value) {
-    Node *node = nodeNew_(key, value);
+void hashmapSet(HashMap *map, const void *key, const void *val) {
     uint64_t index = getHash_(key, map->key_size, map->capacity, 0);
     Node *curr_node = map->items[index];
 
     for (size_t i = 1; curr_node != NULL && curr_node != &deleted_item_; i++) {
-        index = getHash_(key, map->key_size, map->capacity, i);
-        curr_node = map->items[index];
-
-        if (map->nodeCmp(node->key, key) == 0) {
-            nodeFree_(curr_node);
-            map->items[index] = node;
+        if (map->nodeCmp(curr_node->key, key) == 0) {
+            curr_node->val = (void *)val;
             return;
         }
+
+        index = getHash_(key, map->key_size, map->capacity, i);
+        curr_node = map->items[index];
     }
 
+    Node *node = nodeNew_(key, val);
     map->items[index] = node;
     map->size++;
 }
 
 void *hashmapGet(const HashMap *map, const void *key) {
     uint64_t index = getHash_(key, map->key_size, map->capacity, 0);
-    Node *node = map->items[index];
 
-    for (size_t i = 0; node != NULL; i++) {
-        if (node != &deleted_item_) {
-            if (map->nodeCmp(node->key, key) == 0) {
-                return node->value;
-            }
+    for (size_t i = 0; i < map->capacity; i++) {
+        Node *node = map->items[index];
+        if (!node) {
+            return NULL;
+        }
+
+        if (node != &deleted_item_ && map->nodeCmp(node->key, key) == 0) {
+            return node->val;
         }
 
         index = getHash_(key, map->key_size, map->capacity, i);
-        node = map->items[index];
     }
 
     return NULL;
@@ -138,27 +140,28 @@ void *hashmapGet(const HashMap *map, const void *key) {
 
 void hashmapDel(HashMap *map, const void *key) {
     uint64_t index = getHash_(key, map->key_size, map->capacity, 0);
-    Node *node = map->items[index];
 
-    for (size_t i = 0; node != NULL; i++) {
-        if (node != &deleted_item_) {
-            if (map->nodeCmp(node->key, key) == 0) {
-                nodeFree_(node);
-                map->items[index] = &deleted_item_;
-            }
+    for (size_t i = 0; i <= map->capacity; i++) {
+        Node *node = map->items[index];
+        if (!node) {
+            return;
+        }
+
+        if (node != &deleted_item_ && map->nodeCmp(node->key, key) == 0) {
+            nodeFree_(node);
+            map->items[index] = &deleted_item_;
+            map->size--;
+            return;
         }
 
         index = getHash_(key, map->key_size, map->capacity, i);
-        node = map->items[index];
     }
-
-    map->size--;
 }
 
 void hashmapFree(HashMap *map) {
     for (size_t i = 0; i < map->capacity; i++) {
         Node *node = map->items[i];
-        if (node != NULL) {
+        if (node != NULL && node != &deleted_item_) {
             nodeFree_(node);
         }
     }

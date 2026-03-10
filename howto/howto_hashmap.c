@@ -20,7 +20,7 @@ int main(void) {
     hashmapSet(map, "king", "aragorn");
 
     printf("robb: %s\n", (char *)hashmapGet(map, "robb"));
-    // hashmapDel(map, "robb");
+    hashmapDel(map, "robb");
 
     printf("king: %s\n", (char *)hashmapGet(map, "king"));
     printf("gandalf: %s\n", (char *)hashmapGet(map, "gandalf"));
