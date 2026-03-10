@@ -9,7 +9,7 @@ int compare(const void *str1, const void *str2) {
 
 int main(void) {
     HashMapArgs args = {
-        .capacity = 16,
+        .capacity = 3,
         .nodeCmp = compare,
     };
 
