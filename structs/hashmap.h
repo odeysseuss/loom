@@ -7,10 +7,6 @@
 *   #include "hashmap.h"
 *
 * DEPENDENCIES: structs/xxhash.h
-* TODO:
-*   - Allow dynamic alloc and free
-*   - Resizable hashmap
-*   - Benchmark
 */
 #ifndef HASHMAP_H
 #define HASHMAP_H
@@ -20,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,9 +28,10 @@ typedef struct {
 } Node;
 
 typedef struct {
-    void *(*nodeAlloc)(size_t n);
-    void (*nodeFree)(void *node);
+    // void *(*nodeAlloc)(size_t n);
+    // void (*nodeFree)(void *node);
     int (*nodeCmp)(const void *a, const void *b); // returns 0 if equal
+    void (*nodeDisplay)(const void *a, const void *b);
     size_t size;
     size_t capacity;
     size_t key_size;
@@ -45,9 +43,10 @@ typedef struct {
 } HashMap;
 
 typedef struct {
-    void *(*nodeAlloc)(size_t n);
-    void (*nodeFree)(void *node);
+    // void *(*nodeAlloc)(size_t n);
+    // void (*nodeFree)(void *node);
     int (*nodeCmp)(const void *a, const void *b);
+    void (*nodeDisplay)(const void *a, const void *b);
     size_t capacity;
     size_t key_size;
     // size_t val_size;
@@ -59,6 +58,7 @@ void hashmapSet(HashMap *map, const void *key, const void *val);
 void *hashmapGet(const HashMap *map, const void *key);
 void hashmapDel(HashMap *map, const void *key);
 void hashmapFree(HashMap *map);
+void hashmapPrint(HashMap *map);
 
 #define malloc_ malloc
 #define calloc_ calloc
@@ -122,6 +122,10 @@ static void hashmapResize_(HashMap *map) {
 }
 
 HashMap *hashmapNew(HashMapArgs *args) {
+    if (!args || !args->capacity || !args->nodeCmp) {
+        return NULL;
+    }
+
     HashMap *map = malloc_(sizeof(HashMap));
     map->size = 0;
     map->capacity = args->capacity;
@@ -133,9 +137,10 @@ HashMap *hashmapNew(HashMapArgs *args) {
     }
     map->threshold = (size_t)(map->capacity * map->load_factor);
     map->items = calloc_(args->capacity, sizeof(Node *));
-    map->nodeAlloc = args->nodeAlloc;
-    map->nodeFree = args->nodeFree;
+    // map->nodeAlloc = args->nodeAlloc;
+    // map->nodeFree = args->nodeFree;
     map->nodeCmp = args->nodeCmp;
+    map->nodeDisplay = args->nodeDisplay;
     map->tombstone.key = NULL;
     map->tombstone.val = NULL;
 
@@ -223,6 +228,28 @@ void hashmapFree(HashMap *map) {
 
     free_(map->items);
     free_(map);
+}
+
+void hashmapPrint(HashMap *map) {
+    if (!map->nodeDisplay) {
+        return;
+    }
+
+    printf("HashMap (size: %zu, capacity: %zu, load_factor: %.2f)\n",
+           map->size,
+           map->capacity,
+           map->load_factor);
+    for (size_t i = 0; i < map->capacity; i++) {
+        Node *node = map->items[i];
+        printf("[%zu] ", i);
+        if (!node) {
+            puts("empty");
+        } else if (node == &map->tombstone) {
+            puts("tomb");
+        } else {
+            map->nodeDisplay(node->key, node->val);
+        }
+    }
 }
 
 #endif // HASHMAP_IMPLEMENTATION

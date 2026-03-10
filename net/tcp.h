@@ -16,6 +16,7 @@
 #define TCP_H
 
 #define POOL_IMPLEMENTATION
+#include "pool.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -30,7 +31,6 @@
 #include <wait.h>
 #include <signal.h>
 #include <netdb.h>
-#include "pool.h"
 
 #ifdef __cplusplus
 extern "C" {

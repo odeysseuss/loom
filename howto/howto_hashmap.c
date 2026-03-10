@@ -7,10 +7,15 @@ int compare(const void *str1, const void *str2) {
     return strcmp(str1, str2);
 }
 
+void display(const void *key, const void *val) {
+    printf("%s: %s\n", (char *)key, (char *)val);
+}
+
 int main(void) {
     HashMapArgs args = {
         .capacity = 4,
         .nodeCmp = compare,
+        .nodeDisplay = display,
     };
 
     HashMap *map = hashmapNew(&args);
@@ -19,17 +24,12 @@ int main(void) {
     hashmapSet(map, "jaime", "lannister");
     hashmapSet(map, "king", "aragorn");
 
-    printf("robb: %s\n", (char *)hashmapGet(map, "robb"));
     hashmapDel(map, "robb");
+    hashmapPrint(map);
+
     hashmapSet(map, "frodo", "shire");
     hashmapSet(map, "sam", "shire");
-
-    printf("king: %s\n", (char *)hashmapGet(map, "king"));
-    printf("gandalf: %s\n", (char *)hashmapGet(map, "gandalf"));
-    printf("robb: %s\n", (char *)hashmapGet(map, "robb"));
-    printf("jaime: %s\n", (char *)hashmapGet(map, "jaime"));
-    printf("frodo: %s\n", (char *)hashmapGet(map, "frodo"));
-    printf("sam: %s\n", (char *)hashmapGet(map, "sam"));
+    hashmapPrint(map);
 
     hashmapFree(map);
 
