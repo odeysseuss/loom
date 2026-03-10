@@ -1,5 +1,6 @@
 /*
 * SDS style string library
+* REFERENCE: This library is designed similarly as [antirez/sds](https://github.com/antirez/sds)
 *
 * NOTE: To use this library define the following macro in exactly one file
 * before inlcuding str.h:

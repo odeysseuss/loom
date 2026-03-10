@@ -36,10 +36,6 @@
 extern "C" {
 #endif
 
-/// Used for custom general purpose allocators
-/// To use a custom allocators simply define them to the specific allocator's functions
-/// Warning: The function signatures has to be the same as stdlib's allocator
-/// Recommended Allocator: Microsoft's mimalloc
 #define malloc_ malloc
 #define calloc_ calloc
 #define realloc_ realloc
@@ -74,11 +70,8 @@ typedef struct {
 } Conn;
 
 /// Initiates the server instance and adds the server socket for polling
-/// Info:
 /// Allocates `Listener` and `Event` on the same heap region [Listener + Event]
 /// Free it with `tcpCloseListener`.
-/// Returns:
-/// On success, returns a Listener instance. On error, returns NULL.
 Listener *tcpListen(char *port);
 /// Poll the sockets for IO multiplexing.
 /// Info:
@@ -89,17 +82,11 @@ Listener *tcpListen(char *port);
 /// Warning:
 /// The lifetime of `Event` is managed by `Listener` and thus is allocated and freed
 /// with `Listener`. DO NOT explicitly call free on `Event`
-/// Returns:
-/// On success, returns a Event instance. On error, returns NULL.
 Event *tcpPoll(Listener *listener);
 /// Accepts a client connection and adds it for polling
-/// Info:
 /// Free it with `tcpCloseConn`
-/// Returns:
-/// On success, returns a Conn instance. On error, returns NULL.
 Conn *tcpAccept(Listener *listener);
 /// Handler function for each clients.
-/// Returns:
 /// On success, returns a 0. On error, returns -1.
 int tcpHandler(Conn *conn, void (*handler)(Conn *conn));
 /// Removes the client socket from epoll, closes the socket and frees Conn instance
@@ -133,8 +120,6 @@ char *getIPAddr(struct sockaddr_storage *sa, char *buf, size_t len);
 /// IP version agnostic `ntohs`
 /// Warning:
 /// The passed argument CAN NOT be NULL
-/// Returns:
-/// The port number
 uint16_t getPort(struct sockaddr_storage *sa);
 
 #ifdef TCP_IMPLEMENTATION
