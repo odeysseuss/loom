@@ -79,7 +79,7 @@ typedef struct {
 /// Allocates `Listener` and `Event` on the same heap region [Listener + Event]
 /// Free it with `tcpCloseListener`.
 /// MUST provide a `port`. `backlog` and `pool_size` defaults to SOMAXCONN and 1024.
-Listener *tcpListen(ListenerArgs *args);
+Listener *tcpListen(const ListenerArgs *args);
 /// Poll the sockets for IO multiplexing.
 /// Info:
 /// After the function returns, use the `nfds` field to loop through the available events
@@ -123,11 +123,11 @@ ssize_t tcpSend(int fd, const void *buf, size_t len);
 /// Make sure, len >= INET6_ADDRSTRLEN
 /// Returns:
 /// On success, writes the IP address to buf and return the value at buf. On error, returns NULL.
-char *getIPAddr(struct sockaddr_storage *sa, char *buf, size_t len);
+char *getIPAddr(const struct sockaddr_storage *sa, char *buf, size_t len);
 /// IP version agnostic `ntohs`
 /// Warning:
 /// The passed argument CAN NOT be NULL
-uint16_t getPort(struct sockaddr_storage *sa);
+uint16_t getPort(const struct sockaddr_storage *sa);
 
 #ifdef TCP_IMPLEMENTATION
 
@@ -162,7 +162,7 @@ static int setNonBlockingSocket_(int fd) {
     return 0;
 }
 
-static inline Event *getEventPtr_(Listener *listener) {
+static inline Event *getEventPtr_(const Listener *listener) {
     return (Event *)(listener + 1);
 }
 
@@ -188,7 +188,7 @@ static int reapDeadProcs_(void) {
     return 0;
 }
 
-static int tcpEpollInit_(Listener *listener) {
+static int tcpEpollInit_(const Listener *listener) {
     int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
     if (epoll_fd == -1) {
         perror("epoll_create1");
@@ -208,7 +208,7 @@ static int tcpEpollInit_(Listener *listener) {
     return 0;
 }
 
-static int addtoEpollList_(Listener *listener, Conn *conn) {
+static int addtoEpollList_(const Listener *listener, Conn *conn) {
     Event *event = getEventPtr_(listener);
     event->ev_.data.ptr = conn;
     event->ev_.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
@@ -220,7 +220,7 @@ static int addtoEpollList_(Listener *listener, Conn *conn) {
     return 0;
 }
 
-Listener *tcpListen(ListenerArgs *args) {
+Listener *tcpListen(const ListenerArgs *args) {
     if (!args || !args->port) {
         return NULL;
     }
@@ -450,7 +450,7 @@ ssize_t tcpSend(int fd, const void *buf, size_t len) {
     return total;
 }
 
-char *getIPAddr(struct sockaddr_storage *sa, char *buf, size_t len) {
+char *getIPAddr(const struct sockaddr_storage *sa, char *buf, size_t len) {
     if (!sa || !buf) {
         return NULL;
     }
@@ -466,7 +466,7 @@ char *getIPAddr(struct sockaddr_storage *sa, char *buf, size_t len) {
     return buf;
 }
 
-uint16_t getPort(struct sockaddr_storage *sa) {
+uint16_t getPort(const struct sockaddr_storage *sa) {
     if (sa->ss_family == AF_INET) {
         struct sockaddr_in *s = (struct sockaddr_in *)sa;
         return ntohs(s->sin_port);

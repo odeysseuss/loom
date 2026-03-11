@@ -17,15 +17,26 @@ int main(void) {
     s4 = strCatCStr(s4, "Ned");
     s4 = strCatFmt(s4, "%s", " Stark");
     printf("%s\n", s4);
-    printf("alloc: %zu\n", getStrAlloc_(s4));
-    s4 = strReserve(s4, 1000);
-    printf("after reserve: %zu\n", getStrAlloc_(s4));
+    printf("capacity: %zu\n", getStrAlloc_(s4));
     s4 = strTrim(s4);
     printf("after trim: %zu\n", getStrAlloc_(s4));
     printf("after clear: %s\n", strClear(s4));
 
+    String s5 = strNew("aragorn, glorfindel, fingolfin, boromir");
+    size_t count = 0;
+    String *tokens = strSplitLen(s5, ", ", 2, &count);
+    for (size_t i = 0; i < count; i++) {
+        printf("Token-%zu: %s\n", i, tokens[i]);
+    }
+    String s6 = strJoinLen(tokens, count, ", ", 2);
+    printf("%s\n", s6);
+    printf("%s\n", strReplaceLen(s5, "o", 1, "0", 1));
+
+    strSplitResFree(tokens, count);
     strFree(s);
     strFree(s2);
     strFree(s3);
     strFree(s4);
+    strFree(s5);
+    strFree(s6);
 }
