@@ -10,8 +10,10 @@ int main(void) {
     }
     String s3 = strSlice(s, 0, 7);
     printf("sliced: %s\n", s3);
-    String s4 = strEmpty();
+    printf("first index of a: %zu\n", strFindLen(s3, "a", 1));
+    printf("last index of a: %zu\n", strFindLastLen(s3, "a", 1));
 
+    String s4 = strEmpty();
     s4 = strCatCStr(s4, "Ned");
     s4 = strCatFmt(s4, "%s", " Stark");
     printf("%s\n", s4);

@@ -10,6 +10,7 @@
 #ifndef STR_H
 #define STR_H
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,8 +48,8 @@ String strCat(String dest, const String src);
 String strCatFmt(String s1, const char *fmt, ...);
 /// Finding substrings
 size_t strFindLen(const String s, const void *t, size_t len);
+size_t strFind(const String s, const char *cstr);
 size_t strFindLastLen(const String s, const void *t, size_t len);
-size_t strFirst(const String s, const char *cstr);
 size_t strFindLast(const String s, const char *cstr);
 /// Spitting and joining strings
 String *strSplitLen(const String s, const void *sep, size_t seplen, int *count);
@@ -266,10 +267,61 @@ String strCatFmt(String dest, const char *fmt, ...) {
     return dest;
 }
 
-size_t strFindLen(const String s, const void *t, size_t len);
-size_t strFindLastLen(const String s, const void *t, size_t len);
-size_t strFind(const String s, const char *cstr);
-size_t strFindLast(const String s, const char *cstr);
+size_t strFindLen(const String s, const void *t, size_t len) {
+    if (!s || !t) {
+        return -1;
+    }
+
+    size_t s_len = getStrLen_(s);
+    if (len == 1) {
+        for (size_t i = 0; i < s_len; i++) {
+            if (s[i] == *(const char *)t) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    for (size_t i = 0; i < s_len; i++) {
+        if (memcmp(s, t, len)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+size_t strFind(const String s, const char *cstr) {
+    return strFindLen(s, cstr, strlen(cstr));
+}
+
+size_t strFindLastLen(const String s, const void *t, size_t len) {
+    if (!s || !t) {
+        return -1;
+    }
+
+    size_t s_len = getStrLen_(s);
+    if (len == 1) {
+        for (size_t i = s_len; i > 0; i--) {
+            if (s[i] == *(const char *)t) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    for (size_t i = s_len; i > 0; i--) {
+        if (memcmp(s, t, len)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+size_t strFindLast(const String s, const char *cstr) {
+    return strFindLastLen(s, cstr, strlen(cstr));
+}
 
 String strClear(String s) {
     if (!s) {
@@ -279,6 +331,8 @@ String strClear(String s) {
     StrHdr_ *hdr = getStrHdr_(s);
     hdr->len_ = 0;
     s[hdr->len_] = '\0';
+
+    return s;
 }
 
 String *strSplitLen(const String s, const void *sep, size_t seplen, int *count);
@@ -293,8 +347,32 @@ String strReplaceLen(const String s,
                      size_t to_len,
                      size_t len);
 String strReplace(const String s, const char *from, const char *to, size_t len);
-String strToLower(String s);
-String strToUpper(String s);
+
+String strToLower(String s) {
+    if (!s) {
+        return NULL;
+    }
+
+    size_t len = getStrLen_(s);
+    for (size_t i = 0; i < len; i++) {
+        s[i] = tolower(s[i]);
+    }
+
+    return s;
+}
+
+String strToUpper(String s) {
+    if (!s) {
+        return NULL;
+    }
+
+    size_t len = getStrLen_(s);
+    for (size_t i = 0; i < len; i++) {
+        s[i] = toupper(s[i]);
+    }
+
+    return s;
+}
 
 void strFree(String s) {
     if (!s) {
