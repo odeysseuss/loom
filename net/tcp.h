@@ -44,11 +44,6 @@ extern "C" {
 /// Batch size of ready events processed at once by epoll. A higher value means that
 /// it will be more performant while consuming more memory.
 #define MAX_EPOLL_EVENTS 256
-/// The maximum length to which the queue of pending connections for server `Listener.fd`
-/// may grow.
-#define BACKLOG SOMAXCONN
-/// Intial number of chunks in the pool
-#define INITIAL_POOL_SIZE 1024
 
 /// The lifetime of `Event` is managed by `Listener`
 typedef struct {
@@ -61,6 +56,11 @@ typedef struct {
     struct sockaddr_storage addr;
     PoolAlloc *pool_;
     int fd;
+
+    /// Server config
+    char *port_;
+    uint16_t backlog_;
+    uint16_t pool_size_;
 } Listener;
 
 typedef struct {
@@ -69,10 +69,18 @@ typedef struct {
     int fd;
 } Conn;
 
+/// Helper for tcpListen
+typedef struct {
+    char *port;
+    uint16_t backlog;
+    uint16_t pool_size;
+} ListenerArgs;
+
 /// Initiates the server instance and adds the server socket for polling
 /// Allocates `Listener` and `Event` on the same heap region [Listener + Event]
 /// Free it with `tcpCloseListener`.
-Listener *tcpListen(char *port);
+/// MUST provide a `port`. `backlog` and `pool_size` defaults to SOMAXCONN and 1024.
+Listener *tcpListen(ListenerArgs *args);
 /// Poll the sockets for IO multiplexing.
 /// Info:
 /// After the function returns, use the `nfds` field to loop through the available events
@@ -202,10 +210,6 @@ static int tcpEpollInit_(Listener *listener) {
 }
 
 static int addtoEpollList_(Listener *listener, Conn *conn) {
-    if (!listener || !conn) {
-        return -1;
-    }
-
     Event *event = getEventPtr_(listener);
     event->ev_.data.ptr = conn;
     event->ev_.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
@@ -217,14 +221,26 @@ static int addtoEpollList_(Listener *listener, Conn *conn) {
     return 0;
 }
 
-Listener *tcpListen(char *port) {
+Listener *tcpListen(ListenerArgs *args) {
+    if (!args || !args->port) {
+        return NULL;
+    }
+
     // As the lifetime of Listener and Event are same we allocate both of them in a same region,
     // later we access them using getEventPtr_ which returns the Event chunk by moving the listener
     // pointer by sizeof Listener (listener + 1)
     Listener *listener = (Listener *)malloc_(sizeof(Listener) + sizeof(Event));
-    if (!listener) {
-        perror("malloc");
-        return NULL;
+    listener->port_ = args->port;
+    if (args->backlog) {
+        listener->backlog_ = args->backlog;
+    } else {
+        listener->backlog_ = SOMAXCONN;
+    }
+
+    if (args->pool_size) {
+        listener->pool_size_ = args->pool_size;
+    } else {
+        listener->pool_size_ = 1024;
     }
 
     struct addrinfo hints, *res, *p;
@@ -233,7 +249,7 @@ Listener *tcpListen(char *port) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    int rv = getaddrinfo(NULL, port, &hints, &res);
+    int rv = getaddrinfo(NULL, listener->port_, &hints, &res);
     if (rv != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return NULL;
@@ -276,7 +292,7 @@ Listener *tcpListen(char *port) {
 
     listener->fd = fd;
 
-    if (listen(fd, BACKLOG) == -1) {
+    if (listen(fd, listener->backlog_) == -1) {
         perror("listen");
         goto clean;
     }
@@ -289,7 +305,7 @@ Listener *tcpListen(char *port) {
         goto clean;
     }
 
-    listener->pool_ = poolInit(sizeof(Conn), INITIAL_POOL_SIZE);
+    listener->pool_ = poolInit(sizeof(Conn), listener->pool_size_);
 
     return listener;
 
@@ -300,6 +316,10 @@ clean:
 }
 
 Event *tcpPoll(Listener *listener) {
+    if (!listener) {
+        return NULL;
+    }
+
     Event *event = getEventPtr_(listener);
     event->nfds = epoll_wait(event->fd_, event->events, MAX_EPOLL_EVENTS, -1);
     if (event->nfds == -1) {

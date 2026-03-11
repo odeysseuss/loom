@@ -44,7 +44,9 @@ clean:
 int main(void) {
     char buf[INET6_ADDRSTRLEN];
 
-    Listener *listener = tcpListen(PORT);
+    Listener *listener = tcpListen(&(ListenerArgs){
+        .port = PORT,
+    });
     if (!listener) {
         return -1;
     }

@@ -54,7 +54,7 @@ typedef struct {
     float load_factor;
 } HashMapArgs;
 
-/// Hash to provide HashMapArgs with capacity, nodeKeySize and nodeCmp initializes
+/// Has to provide HashMapArgs with capacity, nodeKeySize and nodeCmp initializes
 /// If load_factor is not provided than it falls back to 7.5
 /// Free it with hashmapFree
 HashMap *hashmapNew(HashMapArgs *args);
@@ -62,6 +62,10 @@ HashMap *hashmapNew(HashMapArgs *args);
 /// is responsible for the lifetime of that memory
 void hashmapSet(HashMap *map, const void *key, const void *val);
 void *hashmapGet(const HashMap *map, const void *key);
+/// If you freed the key or value of any heap allocated object be sure to call
+/// hashmapDel as the the lifetime of key, val and node can be completely different.
+/// Or, call hashmapSet with the same key with a different val before using it.
+/// Otherwise, it will hold dangling pointers.
 void hashmapDel(HashMap *map, const void *key);
 void hashmapFree(HashMap *map);
 /// Has to provide a nodeDisplay function when initializing HashMap via hashmapNew
@@ -155,6 +159,10 @@ HashMap *hashmapNew(HashMapArgs *args) {
 }
 
 void hashmapSet(HashMap *map, const void *key, const void *val) {
+    if (!map || !key || !val) {
+        return;
+    }
+
     if (map->threshold <= map->size) {
         hashmapResize_(map);
     }
@@ -187,6 +195,10 @@ void hashmapSet(HashMap *map, const void *key, const void *val) {
 }
 
 void *hashmapGet(const HashMap *map, const void *key) {
+    if (!map || !key) {
+        return NULL;
+    }
+
     uint64_t index = getHash_((void *)map, key, map->capacity, 0);
 
     for (size_t i = 0; i < map->capacity; i++) {
@@ -206,6 +218,10 @@ void *hashmapGet(const HashMap *map, const void *key) {
 }
 
 void hashmapDel(HashMap *map, const void *key) {
+    if (!map || !key) {
+        return;
+    }
+
     uint64_t index = getHash_(map, key, map->capacity, 0);
 
     for (size_t i = 0; i < map->capacity; i++) {
@@ -226,6 +242,10 @@ void hashmapDel(HashMap *map, const void *key) {
 }
 
 void hashmapFree(HashMap *map) {
+    if (!map) {
+        return;
+    }
+
     for (size_t i = 0; i < map->capacity; i++) {
         Node *node = map->items[i];
         if (node && node != &map->tombstone) {
@@ -238,7 +258,7 @@ void hashmapFree(HashMap *map) {
 }
 
 void hashmapPrint(HashMap *map) {
-    if (!map->print) {
+    if (!map || !map->print) {
         return;
     }
 
