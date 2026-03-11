@@ -1,8 +1,7 @@
 /*
 * Arena allocator
 *
-* NOTE: To use this library define the following macro in exactly one file
-* before inlcuding arena.h:
+* USAGE:
 *   #define ARENA_IMPLEMENTATION
 *   #include "arena.h"
 */

@@ -1,8 +1,7 @@
 /*
 * Pool allocator
 *
-* NOTE: To use this library define the following macro in exactly one file
-* before inlcuding pool.h:
+* USAGE:
 *   #define POOL_IMPLEMENTATION
 *   #include "pool.h"
 */

@@ -1,14 +1,10 @@
 /*
-* SDS style string library
+* SDS style binary safe string library
 * REFERENCE: This library is designed similarly as [antirez/sds](https://github.com/antirez/sds)
 *
-* NOTE: To use this library define the following macro in exactly one file
-* before inlcuding str.h:
+* USAGE:
 *   #define STRING_IMPLEMENTATION
 *   #include "str.h"
-* TODO:
-*   - Methods: strCat, strCatFmt, strSlice, strCpy, strLastIndexOf, strFirstIndexOf,
-*   strSplit, strJoin, strReplace
 */
 
 #ifndef STR_H
@@ -29,18 +25,51 @@ extern "C" {
 typedef char *String;
 
 /// Constructors
-String strNew(const char *s);
-String strNewLen(const void *s, const size_t len);
+String strNewLen(const void *s, size_t len);
+String strNew(const char *cstr);
 String strEmpty(void);
-
-/// String methods
+String strDup(const String s);
+String strSlice(const String s, size_t start, size_t end);
+/// Get string length
 size_t strLen(const String s);
+/// Comparison of strings
 int strCmp(const String s1, const String s2);
-
+/// Grow or trim strings
+String strGrow(const String s, size_t addlen);
+String strTrim(String s);
+/// Concatinating strings
+String strCatLen(String s, const void *t, size_t len);
+String strCatCStr(String s, const char *cstr);
+String strCat(String s1, const String s2);
+String strCatFmt(String s1, const char *fmt, ...);
+/// Finding substrings
+size_t strFindLen(const String s, const void *t, size_t len);
+size_t strFindLastLen(const String s, const void *t, size_t len);
+size_t strFirst(const String s, const char *cstr);
+size_t strFindLast(const String s, const char *cstr);
+/// Clear without freeing strings
+void strClear(String s);
+/// Spitting and joining strings
+String *strSplitLen(const String s, const void *sep, size_t seplen, int *count);
+String *strSplit(const String s, const char *sep, int *count);
+void strSplitResFree(String *toks, int count);
+String strJoinLen(String *toks, int count, const void *sep, size_t seplen);
+String strJoin(String *toks, int count, const char *sep);
+/// Replace substrings
+String strReplaceLen(const String s,
+                     const void *from,
+                     size_t from_len,
+                     const void *to,
+                     size_t to_len,
+                     size_t len);
+String strReplace(const String s, const char *from, const char *to, size_t len);
+/// String casing
+void strToLower(String s);
+void strToUpper(String s);
 /// Destructors
 void strFree(String s);
 
-#ifdef STRING_IMPLEMENTATION
+// #ifdef STRING_IMPLEMENTATION
 
 // header for String type
 // used as a binary perfix that's stored before the actual String type
@@ -68,11 +97,11 @@ static inline size_t getStrAlloc_(const String s) {
 }
 
 String strNewLen(const void *s, const size_t len) {
-    StrHdr_ *hdr = (StrHdr_ *)malloc_(sizeof(StrHdr_) + len + 1);
-    if (!hdr) {
+    if (!s || len == 0) {
         return NULL;
     }
 
+    StrHdr_ *hdr = (StrHdr_ *)malloc_(sizeof(StrHdr_) + len + 1);
     hdr->len_ = len;
     hdr->alloc_ = len;
 
@@ -85,16 +114,16 @@ String strNewLen(const void *s, const size_t len) {
     return str;
 }
 
-String strEmpty(void) {
-    return strNewLen("", 0);
-}
-
-String strNew(const char *s) {
-    if (!s) {
+String strNew(const char *cstr) {
+    if (!cstr) {
         return NULL;
     }
 
-    return strNewLen(s, strlen(s));
+    return strNewLen(cstr, strlen(cstr));
+}
+
+String strEmpty(void) {
+    return strNewLen("", 0);
 }
 
 size_t strLen(const String s) {
@@ -131,7 +160,7 @@ void strFree(String s) {
     free(hdr);
 }
 
-#endif // STRING_IMPLEMENTATION
+// #endif // STRING_IMPLEMENTATION
 
 #undef malloc_
 #undef calloc_

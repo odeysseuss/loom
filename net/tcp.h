@@ -2,12 +2,12 @@
 * TCP abstraction layer with linux sockets api
 * Uses non blocking sockets for concurrency with epoll api
 *
-* NOTE: To use this library define the following macro in EXACTLY
-* ONE FILE BEFORE inlcuding tcp.h:
+* DEPENDENCIES: mem/pool.h
+* USAGE:
 *   #define TCP_IMPLEMENTATION
+*   #define POOL_IMPLEMENTATION
 *   #include "tcp.h"
 *
-* DEPENDENCIES: mem/pool.h
 * WARNING: Only accessible in Linux
 * TODO:
 *   - Windows and BSD support
@@ -15,7 +15,6 @@
 #ifndef TCP_H
 #define TCP_H
 
-#define POOL_IMPLEMENTATION
 #include "pool.h"
 #include <arpa/inet.h>
 #include <errno.h>

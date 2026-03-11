@@ -1,3 +1,4 @@
+#define POOL_IMPLEMENTATION
 #define TCP_IMPLEMENTATION
 #include "tcp.h"
 
