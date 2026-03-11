@@ -10,6 +10,8 @@
 #ifndef STR_H
 #define STR_H
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,19 +38,18 @@ size_t strLen(const String s);
 int strCmp(const String s1, const String s2);
 /// Grow or trim strings
 String strGrow(const String s, size_t addlen);
+String strReserve(const String s, size_t addlen);
 String strTrim(String s);
 /// Concatinating strings
-String strCatLen(String s, const void *t, size_t len);
-String strCatCStr(String s, const char *cstr);
-String strCat(String s1, const String s2);
+String strCatLen(String dest, const void *src, size_t len);
+String strCatCStr(String dest, const char *src);
+String strCat(String dest, const String src);
 String strCatFmt(String s1, const char *fmt, ...);
 /// Finding substrings
 size_t strFindLen(const String s, const void *t, size_t len);
 size_t strFindLastLen(const String s, const void *t, size_t len);
 size_t strFirst(const String s, const char *cstr);
 size_t strFindLast(const String s, const char *cstr);
-/// Clear without freeing strings
-void strClear(String s);
 /// Spitting and joining strings
 String *strSplitLen(const String s, const void *sep, size_t seplen, int *count);
 String *strSplit(const String s, const char *sep, int *count);
@@ -64,8 +65,10 @@ String strReplaceLen(const String s,
                      size_t len);
 String strReplace(const String s, const char *from, const char *to, size_t len);
 /// String casing
-void strToLower(String s);
-void strToUpper(String s);
+String strToLower(String s);
+String strToUpper(String s);
+/// Clear without freeing strings
+String strClear(String s);
 /// Destructors
 void strFree(String s);
 
@@ -97,7 +100,7 @@ static inline size_t getStrAlloc_(const String s) {
 }
 
 String strNewLen(const void *s, const size_t len) {
-    if (!s || len == 0) {
+    if (!s) {
         return NULL;
     }
 
@@ -115,10 +118,6 @@ String strNewLen(const void *s, const size_t len) {
 }
 
 String strNew(const char *cstr) {
-    if (!cstr) {
-        return NULL;
-    }
-
     return strNewLen(cstr, strlen(cstr));
 }
 
@@ -150,6 +149,152 @@ int strCmp(const String s1, const String s2) {
 
     return (s1_len > s2_len) - (s1_len < s2_len);
 }
+
+String strDup(const String s) {
+    return strNewLen(s, getStrLen_(s));
+}
+
+String strSlice(const String s, size_t start, size_t end) {
+    if (!s) {
+        return NULL;
+    }
+
+    size_t new_len = end - start;
+    return strNewLen(s + start, new_len);
+}
+
+String strGrow(const String s, size_t addlen) {
+    if (!s || addlen == 0) {
+        return NULL;
+    }
+
+    StrHdr_ *hdr = getStrHdr_(s);
+    size_t curr_len = hdr->len_;
+    size_t new_alloc = hdr->alloc_ + addlen;
+    StrHdr_ *new_hdr = realloc_(hdr, sizeof(StrHdr_) + new_alloc + 1);
+    new_hdr->alloc_ = new_alloc;
+    new_hdr->len_ = curr_len;
+
+    return (String)(new_hdr + 1);
+}
+
+String strReserve(const String s, size_t capacity) {
+    if (!s) {
+        return NULL;
+    }
+
+    StrHdr_ *hdr = getStrHdr_(s);
+    size_t curr_len = hdr->len_;
+    StrHdr_ *new_hdr = realloc_(hdr, sizeof(StrHdr_) + capacity + 1);
+    new_hdr->alloc_ = capacity;
+    new_hdr->len_ = curr_len;
+
+    return (String)(new_hdr + 1);
+}
+
+String strTrim(String s) {
+    if (!s) {
+        return NULL;
+    }
+
+    StrHdr_ *hdr = getStrHdr_(s);
+    if (getStrAvail_(s) == 0) {
+        return s;
+    }
+
+    size_t new_alloc = hdr->len_;
+    StrHdr_ *new_hdr = realloc_(hdr, sizeof(StrHdr_) + new_alloc + 1);
+    new_hdr->alloc_ = new_alloc;
+    new_hdr->len_ = new_alloc;
+
+    return (String)(new_hdr + 1);
+}
+
+String strCatLen(String dest, const void *src, size_t len) {
+    if (!dest || !src || len == 0) {
+        return NULL;
+    }
+
+    size_t curr_len = getStrLen_(dest);
+    if (getStrAvail_(dest) < len) {
+        dest = strGrow(dest, len);
+    }
+
+    memcpy(dest + curr_len, src, len);
+    StrHdr_ *hdr = getStrHdr_(dest);
+    hdr->len_ = curr_len + len;
+    dest[hdr->len_] = '\0';
+
+    return dest;
+}
+
+String strCatCStr(String dest, const char *src) {
+    return strCatLen(dest, src, strlen(src));
+}
+
+String strCat(String dest, const String src) {
+    return strCatLen(dest, src, getStrLen_(src));
+}
+
+String strCatFmt(String dest, const char *fmt, ...) {
+    if (!dest || !fmt) {
+        return NULL;
+    }
+
+    va_list ap;
+    va_start(ap, fmt);
+    int needed = vsnprintf(NULL, 0, fmt, ap);
+    if (needed < 0) {
+        return NULL;
+    }
+    va_end(ap);
+
+    if (getStrAvail_(dest) < (size_t)needed) {
+        dest = strGrow(dest, needed);
+    }
+
+    StrHdr_ *hdr = getStrHdr_(dest);
+    size_t len = getStrLen_(dest);
+    va_start(ap, fmt);
+    int written = vsnprintf(dest + len, needed + 1, fmt, ap);
+    if (written < 0) {
+        return NULL;
+    }
+    va_end(ap);
+
+    hdr->len_ = len + written;
+    return dest;
+}
+
+size_t strFindLen(const String s, const void *t, size_t len);
+size_t strFindLastLen(const String s, const void *t, size_t len);
+size_t strFind(const String s, const char *cstr);
+size_t strFindLast(const String s, const char *cstr);
+
+String strClear(String s) {
+    if (!s) {
+        return NULL;
+    }
+
+    StrHdr_ *hdr = getStrHdr_(s);
+    hdr->len_ = 0;
+    s[hdr->len_] = '\0';
+}
+
+String *strSplitLen(const String s, const void *sep, size_t seplen, int *count);
+String *strSplit(const String s, const char *sep, int *count);
+void strSplitResFree(String *toks, int count);
+String strJoinLen(String *toks, int count, const void *sep, size_t seplen);
+String strJoin(String *toks, int count, const char *sep);
+String strReplaceLen(const String s,
+                     const void *from,
+                     size_t from_len,
+                     const void *to,
+                     size_t to_len,
+                     size_t len);
+String strReplace(const String s, const char *from, const char *to, size_t len);
+String strToLower(String s);
+String strToUpper(String s);
 
 void strFree(String s) {
     if (!s) {
