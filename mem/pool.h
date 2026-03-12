@@ -9,6 +9,7 @@
 #ifndef POOL_H
 #define POOL_H
 
+#include <fcntl.h>
 #include <stdlib.h>
 
 #ifdef __cplusplus
@@ -40,7 +41,7 @@ PoolAlloc *poolInit(size_t chunk_size, size_t num_chunks) {
 
     PoolAlloc *pool = malloc_(sizeof(PoolAlloc));
     pool->chunk_size = chunk_size;
-    pool->memory = calloc(num_chunks, chunk_size);
+    pool->memory = calloc_(num_chunks, chunk_size);
     pool->free_list = pool->memory;
 
     char *chunk = (char *)pool->memory;

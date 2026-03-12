@@ -13,7 +13,7 @@ endif
 
 srcs := $(wildcard howto/*.c)
 objs := $(srcs:howto/%.c=$(objdir)/%.o)
-deps := $(srcs:howto/%.c=$(objdir)/%.d)
+deps := $(objs:.o=.d)
 exec := $(srcs:howto/%.c=$(bindir)/%)
 -include $(deps)
 

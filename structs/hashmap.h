@@ -75,7 +75,6 @@ void hashmapPrint(HashMap *map);
 #ifdef HASHMAP_IMPLEMENTATION
 
 /// === xx3hash function ===
-
 #    define XXH_PRIME_1 11400714785074694791ULL
 #    define XXH_PRIME_2 14029467366897019727ULL
 #    define XXH_PRIME_3 1609587929392839161ULL

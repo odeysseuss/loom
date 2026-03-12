@@ -3,7 +3,7 @@
 * REFERENCE: This library is designed similarly as [antirez/sds](https://github.com/antirez/sds)
 *
 * USAGE:
-*   #define STRING_IMPLEMENTATION
+*   #define STR_IMPLEMENTATION
 *   #include "str.h"
 */
 
@@ -77,7 +77,7 @@ String strClear(String s);
 /// Destructors
 void strFree(String s);
 
-#ifdef STRING_IMPLEMENTATION
+#ifdef STR_IMPLEMENTATION
 
 #    define STR_MAX_PREALLOC 1024
 
@@ -200,7 +200,7 @@ String strTrim(String s) {
     return (String)(new_hdr + 1);
 }
 
-static String strMakeRoom(String s, size_t addlen) {
+static String strMakeRoom_(String s, size_t addlen) {
     size_t new_len = getStrLen_(s) + addlen;
     if (new_len < STR_MAX_PREALLOC) {
         new_len *= 2;
@@ -218,7 +218,7 @@ String strCatLen(String dest, const void *src, size_t len) {
 
     size_t curr_len = getStrLen_(dest);
     if (getStrAvail_(dest) < len) {
-        dest = strMakeRoom(dest, len);
+        dest = strMakeRoom_(dest, len);
     }
 
     memcpy(dest + curr_len, src, len);
@@ -251,7 +251,7 @@ String strCatFmt(String dest, const char *fmt, ...) {
     va_end(ap);
 
     if (getStrAvail_(dest) < (size_t)needed) {
-        dest = strMakeRoom(dest, needed);
+        dest = strMakeRoom_(dest, needed);
     }
 
     StrHdr_ *hdr = getStrHdr_(dest);
