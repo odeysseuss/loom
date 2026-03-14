@@ -4,50 +4,39 @@
 
 #define PORT "8000"
 
-void readAndWrite(Conn *conn) {
+int readAndWrite(Conn *conn) {
     if (!conn || conn->fd < 0) {
-        return;
+        return -1;
     }
 
     char buf[1024];
     char str[INET6_ADDRSTRLEN];
-    ssize_t bytes_recv;
 
-    while (1) {
-        bytes_recv = tcpRecv(conn->fd, buf, sizeof(buf) - 1);
-        if (bytes_recv == -2) {
-            break;
-        } else if (bytes_recv == 0) {
-            fprintf(stdout,
-                    "[Disconnected] %s:%d (fd: %d)\n",
-                    getIPAddr(&conn->addr, str, INET6_ADDRSTRLEN),
-                    getPort(&conn->addr),
-                    conn->fd);
+    ssize_t bytes_recv = tcpRecv(conn->fd, buf, sizeof(buf) - 1);
+    if (bytes_recv == 0) {
+        fprintf(stdout,
+                "[Disconnected] %s:%d (fd: %d)\n",
+                getIPAddr(&conn->addr, str, INET6_ADDRSTRLEN),
+                getPort(&conn->addr),
+                conn->fd);
 
-            goto clean;
-        } else if (bytes_recv == -1) {
-            goto clean;
-        }
-
-        ssize_t bytes_send = tcpSend(conn->fd, buf, bytes_recv);
-        if (bytes_send <= 0) {
-            goto clean;
-        }
+        return -1;
+    } else if (bytes_recv == -1) {
+        return -1;
     }
 
-    return;
+    ssize_t bytes_send = tcpSend(conn->fd, buf, bytes_recv);
+    if (bytes_send <= 0) {
+        return -1;
+    }
 
-clean:
-    tcpCloseConn(conn);
-    return;
+    return 0;
 }
 
 int main(void) {
     char buf[INET6_ADDRSTRLEN];
 
-    Listener *listener = tcpListen(&(ListenerArgs){
-        .port = PORT,
-    });
+    Listener *listener = tcpListen(PORT);
     if (!listener) {
         return -1;
     }
@@ -65,10 +54,6 @@ int main(void) {
 
         int nfds = event->nfds;
         for (int i = 0; i < nfds; i++) {
-            if (event->events[i].events & (EPOLLERR | EPOLLHUP)) {
-                continue;
-            }
-
             if (event->events[i].data.fd == listener->fd) {
                 while (1) {
                     Conn *conn = tcpAccept(listener);
@@ -78,8 +63,8 @@ int main(void) {
 
                     fprintf(stdout,
                             "[Connected] %s:%d (fd: %d)\n",
-                            getIPAddr(&listener->addr, buf, INET6_ADDRSTRLEN),
-                            getPort(&listener->addr),
+                            getIPAddr(&conn->addr, buf, INET6_ADDRSTRLEN),
+                            getPort(&conn->addr),
                             conn->fd);
                 }
             } else {
