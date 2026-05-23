@@ -1,6 +1,6 @@
 cc := clang
 cflags := -std=c11 -Wall -Wextra -pedantic -MMD -MP -D_GNU_SOURCE
-incdir := -Istructs -Imem -Inet
+incdir := -Istructs -Imem -Inet -Imisc
 objdir := build/obj
 bindir := build/target
 
